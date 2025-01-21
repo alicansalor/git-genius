@@ -1,36 +1,83 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-
-	"git-genius/config"
-	"git-genius/internal/sdk"
+	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-var commitCmd = &cobra.Command{
-	Use:   "commit",
-	Short: "Generate a commit message and commit changes",
-	Run: func(cmd *cobra.Command, args []string) {
-		// Get the config path from the flag
-		configPath, _ := cmd.Flags().GetString("config")
+func commitCmd(dep *SharedDependencies) *cobra.Command {
+	return &cobra.Command{
+		Use:   "smart-commit",
+		Short: "Generate a commit message and commit changes",
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx := cmd.Context()
+			// Generate commit message
+			commitMessage, err := dep.sdk.GenerateCommitMessage(ctx)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
 
-		// Initialize SDK
-		genius := sdk.NewGeniusSDK()
+			// Show the generated commit message
+			fmt.Println("\nGenerated Commit Message:")
+			fmt.Println("-------------------------")
+			fmt.Println(commitMessage)
+			fmt.Println("-------------------------")
 
-		// Generate commit message
-		message, err := genius.GenerateCommitMessage(context.Background(), configPath)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			return
-		}
+			// Prompt user for input
+			fmt.Println("What would you like to do?")
+			fmt.Println("[Y] Accept and Commit")
+			fmt.Println("[N] Cancel")
 
-		fmt.Printf("Generated Commit Message:\n%s\n", message)
-	},
+			var choice string
+			fmt.Print("Enter your choice (Y/N): ")
+			fmt.Scanln(&choice)
+
+			switch strings.ToLower(choice) {
+			case "y":
+				// Proceed with Git's editor for commit
+				performGitCommitWithEditor(commitMessage)
+			case "n":
+				// Cancel the operation
+				fmt.Println("Commit canceled.")
+			default:
+				fmt.Println("Invalid choice. Commit canceled.")
+			}
+		},
+	}
 }
 
-func init() {
-	commitCmd.Flags().StringP("config", "c", config.DefaultConfigPath(), "Path to configuration file")
+func performGitCommitWithEditor(commitMessage string) error {
+	// Write the message to a temporary file
+	tempFile, err := os.CreateTemp("", "git-commit-msg-*.txt")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.WriteString(commitMessage)
+	if err != nil {
+		return fmt.Errorf("failed to write commit message to file: %w", err)
+	}
+	tempFile.Close()
+
+	// Open Git's editor for editing and commit
+	cmd := exec.Command("git", "commit", "--edit", "--file", tempFile.Name())
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Run()
+	if err != nil {
+		// If Git aborts due to an empty commit message, notify the user
+		fmt.Println("Commit canceled by user.")
+		return nil
+	}
+
+	fmt.Println("Commit completed successfully.")
+	return nil
 }
