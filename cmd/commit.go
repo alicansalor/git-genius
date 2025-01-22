@@ -10,7 +10,7 @@ import (
 )
 
 func commitCmd(dep *SharedDependencies) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "smart-commit",
 		Short: "Generate a commit message and commit changes",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -49,6 +49,11 @@ func commitCmd(dep *SharedDependencies) *cobra.Command {
 			}
 		},
 	}
+
+	// flags
+	cmd.PersistentFlags().String("issue", "", "Issue ID to associate with the operation")
+
+	return cmd
 }
 
 func performGitCommitWithEditor(commitMessage string) error {

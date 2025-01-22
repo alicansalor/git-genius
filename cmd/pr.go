@@ -7,7 +7,7 @@ import (
 )
 
 func prCmd(dep *SharedDependencies) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "pr",
 		Short: "Generate a pull request",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -24,4 +24,9 @@ func prCmd(dep *SharedDependencies) *cobra.Command {
 				prContent.Title, prContent.Body)
 		},
 	}
+
+	// flags
+	cmd.PersistentFlags().String("issue", "", "Issue ID to associate with the operation")
+
+	return cmd
 }

@@ -77,8 +77,6 @@ func Execute() error {
 func init() {
 	// Define persistent flags for the root command
 	RootCmd.PersistentFlags().String("config", "", "Path to the configuration file")
-	RootCmd.PersistentFlags().String("issue", "", "Issue ID to associate with the operation")
-
 	// Add subcommands and pass shared dependencies
 	RootCmd.AddCommand(prCmd(&sharedDeps))
 	RootCmd.AddCommand(commitCmd(&sharedDeps))
